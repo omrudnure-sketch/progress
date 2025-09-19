@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKILLORBIT.AI - Interactive Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the app */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .page {
+            display: none; /* Initially hide all pages */
+        }
+        .page.active {
+            display: flex; /* Show active page */
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #4f46e5, #ec4899, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+        .btn-stylish {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(79, 70, 229, 0.5), inset 0 0 5px rgba(255,255,255,0.2);
+        }
+        .btn-stylish:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 25px rgba(79, 70, 229, 0.8), inset 0 0 10px rgba(255,255,255,0.3);
+        }
+        .game-option:hover {
+            transform: scale(1.03);
+            border-color: rgba(236, 72, 153, 0.7);
+        }
+        /* Custom animation for loading */
+        @keyframes pulse-light {
+            0%, 100% { box-shadow: 0 0 10px #4f46e5, 0 0 20px #4f46e5; }
+            50% { box-shadow: 0 0 20px #ec4899, 0 0 30px #ec4899; }
+        }
+        .loader-animation {
+            animation: pulse-light 2s infinite ease-in-out;
+        }
+        
+        /* Cosmic Crystals Game styles */
+        .crystal {
+            animation: float 6s ease-in-out infinite;
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+        .crystal:hover {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+        }
+        .crystal.correct { animation: glow-green 1s forwards; }
+        .crystal.incorrect { animation: shake 0.5s forwards; filter: grayscale(50%); }
+        .crystal.reveal { animation: glow-green 1s infinite alternate; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+        @keyframes glow-green { from { filter: drop-shadow(0 0 0px #10b981); } to { filter: drop-shadow(0 0 25px #10b981); } }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+        /* Word Scramble styles */
+        .scramble-letter { transition: background-color 0.2s, transform 0.2s; }
+        .scramble-letter:hover { transform: scale(1.1); }
+        .scramble-letter.used { background-color: #4a5568; color: #a0aec0; cursor: not-allowed; transform: scale(0.9); }
+        #scramble-answer-box { letter-spacing: 0.5em; min-height: 2.5rem; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.5rem 1rem; }
+
+        /* True/False Pulsar styles */
+        .pulsar-btn { animation: pulse-border 2s infinite; transition: all 0.3s ease; }
+        .pulsar-btn:hover { transform: scale(1.05); }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
+
+        /* Notification Styles */
+        .notification {
+            animation: slideIn 0.3s ease-out forwards, fadeOut 0.5s ease-in 3.5s forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(10%); }
+        }
+
+    </style>
+</head>
+<body class="min-h-screen w-full flex items-center justify-center p-4">
+
+    <div id="notification-area" class="fixed top-5 right-5 z-[100] space-y-2"></div>
+
+    <section id="login-page" class="page active flex-col items-center justify-center w-full max-w-md">
+        <div class="glassmorphism p-8 md:p-12 rounded-2xl w-full">
+             <div class="mb-6 text-center">
+                <h1 class="font-orbitron text-4xl font-extrabold tracking-widest gradient-text">
+                    SKILLORBIT.AI
+                </h1>
+                <p class="text-gray-400 mt-2 text-lg">Your Personal AI-Powered Learning Companion</p>
+            </div>
+            <div>
+                <h2 class="font-orbitron text-3xl font-bold text-center mb-2 gradient-text">Welcome!</h2>
+                <p class="text-center text-gray-400 mb-8">Enter the orbit of knowledge.</p>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label for="email" class="block text-gray-300 mb-2">Email</label>
+                        <input type="email" id="email" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-2 px-3 focus:outline-none focus:border-indigo-500" placeholder="you@domain.com" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-gray-300 mb-2">Password</label>
+                        <input type="password" id="password" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-2 px-3 focus:outline-none focus:border-indigo-500" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="w-full btn-stylish bg-indigo-600 text-white font-bold py-3 px-6 rounded-full text-lg">
+                        Login & Launch
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section id="dashboard-page" class="page flex-col items-center justify-start w-full max-w-6xl mx-auto h-full">
+        <header class="w-full flex justify-between items-center py-4 mb-6">
+            <div class="flex items-center gap-4">
+                <button id="dashboard-back-btn" class="text-gray-400 hover:text-white" title="Back to Login">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h1 class="font-orbitron text-3xl font-bold gradient-text">Dashboard</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <p class="text-gray-400 hidden sm:block">Welcome, Learner!</p>
+                <a href="index.html">
+                <button id="my-progress-btn" class="btn-stylish bg-pink-600 text-white font-bold py-2 px-5 rounded-full text-sm hover:bg-pink-700">
+                    My Progress
+                </button>
+                </a>
+            </div>
+        </header>
+
+        <main id="dashboard-content" class="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div id="learning-journey-panel" class="lg:col-span-2 w-full glassmorphism rounded-2xl p-6 flex flex-col justify-center min-h-[400px] relative">
+                
+                <button id="journey-back-btn" class="absolute top-4 left-4 text-gray-400 hover:text-white z-10 hidden" title="Start Over">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+
+                <div id="upload-step" class="text-center">
+                    <h2 class="text-2xl font-bold mb-2">Start a New Learning Orbit</h2>
+                    <p class="text-gray-400 mb-6">Upload a PDF document on the topic you want to master.</p>
+                    <div class="border-2 border-dashed border-gray-600 rounded-xl p-8">
+                         <input type="file" id="pdf-upload" class="hidden" accept=".pdf">
+                         <label for="pdf-upload" class="cursor-pointer flex flex-col items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400 mb-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                            <span class="font-semibold text-indigo-400">Click to upload a PDF</span>
+                            <span id="file-name" class="text-gray-500 mt-2"></span>
+                         </label>
+                    </div>
+                </div>
+
+                <div id="analyzing-step" class="text-center hidden">
+                    <h2 id="analyzing-title" class="text-2xl font-bold mb-4">Reading Your Document...</h2>
+                    <p id="analyzing-subtitle" class="text-gray-400 mb-8">Our AI is charting your knowledge constellation.</p>
+                    <div class="relative w-24 h-24 mx-auto">
+                        <div class="absolute inset-0 rounded-full border-4 border-indigo-500/30"></div>
+                        <div class="absolute inset-0 rounded-full border-t-4 border-t-indigo-500 animate-spin"></div>
+                    </div>
+                    <p id="error-message" class="text-red-400 mt-4 hidden"></p>
+                </div>
+
+                <div id="level-check-step" class="w-full hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-center">Let's Calibrate Your Skill Level</h2>
+                    <p class="text-gray-400 mb-6 text-center">Answer a few questions to personalize your path.</p>
+                    <div id="level-questions-container" class="space-y-4">
+                        </div>
+                    <button id="submit-level-answers" class="mt-6 w-full btn-stylish bg-indigo-600 text-white font-bold py-3 px-6 rounded-full text-lg">
+                        Confirm Level
+                    </button>
+                </div>
+
+                <div id="quiz-options-step" class="w-full text-center hidden">
+                     <h2 class="text-2xl font-bold mb-2">Ready to Launch?</h2>
+                     <p class="text-gray-400 mb-8">Choose your preferred way to learn and test your knowledge.</p>
+                     
+                     <h3 class="font-orbitron text-xl text-pink-400 mb-4">Interactive Mini-Games</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                         <div id="play-crystals-btn" class="game-option glassmorphism p-4 rounded-xl cursor-pointer border border-transparent transition-all duration-300 flex flex-col items-center justify-center">
+                             <h4 class="text-lg font-semibold mb-1">Cosmic Crystals</h4>
+                             <p class="text-gray-400 text-sm">Multiple Choice</p>
+                         </div>
+                         <div id="play-scramble-btn" class="game-option glassmorphism p-4 rounded-xl cursor-pointer border border-transparent transition-all duration-300 flex flex-col items-center justify-center">
+                             <h4 class="text-lg font-semibold mb-1">Word Scramble</h4>
+                             <p class="text-gray-400 text-sm">Unscramble Terms</p>
+                         </div>
+                         <div id="play-pulsar-btn" class="game-option glassmorphism p-4 rounded-xl cursor-pointer border border-transparent transition-all duration-300 flex flex-col items-center justify-center">
+                             <h4 class="text-lg font-semibold mb-1">True/False Pulsar</h4>
+                             <p class="text-gray-400 text-sm">Quick Decisions</p>
+                         </div>
+                     </div>
+
+                     <div class="w-full my-4 border-t border-gray-700/50"></div>
+
+                     <h3 class="font-orbitron text-xl text-indigo-400 mb-4">Formal Assessment</h3>
+                     <div id="learn-quiz-btn" class="glassmorphism p-6 rounded-xl cursor-pointer border border-transparent hover:border-indigo-500 transition-all duration-300 flex items-center justify-center text-center">
+                         <div>
+                             <h3 class="text-xl font-semibold mb-2">Learn Through Quiz</h3>
+                             <p class="text-gray-400">Professional, up-to-the-point questions for focused learning.</p>
+                         </div>
+                     </div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-1 w-full space-y-6">
+                <div class="glassmorphism rounded-2xl p-6">
+                    <h3 class="font-semibold mb-3 text-lg">Topic Understanding</h3>
+                    <div class="w-full bg-gray-700 rounded-full h-4">
+                        <div id="understanding-bar" class="bg-gradient-to-r from-indigo-500 to-pink-500 h-4 rounded-full" style="width: 25%;"></div>
+                    </div>
+                    <p id="understanding-text" class="text-right text-gray-400 mt-2 text-sm">Beginner</p>
+                </div>
+
+                <div class="glassmorphism rounded-2xl p-6 text-center">
+                    <h3 class="font-semibold mb-2 text-lg">Latest Test Score</h3>
+                    <p id="latest-score" class="text-5xl font-bold gradient-text">N/A</p>
+                </div>
+
+                <div class="glassmorphism rounded-2xl p-6">
+                    <h3 class="font-semibold mb-3 text-lg">AI-Powered Suggestions</h3>
+                    <ul id="ai-tips-list" class="space-y-2 text-gray-300">
+                        <li class="flex items-start">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400 mr-2 mt-1 flex-shrink-0"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            <span>Upload a document to dive in Gamified Environment!</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <div id="quiz-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
+        <div id="quiz-container" class="glassmorphism rounded-2xl p-8 w-full max-w-3xl relative transition-all duration-300">
+            <button id="quiz-back-btn" class="absolute top-4 left-4 text-gray-400 hover:text-white z-10" title="Back to Dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <button id="close-quiz-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <div id="quiz-content">
+                </div>
+        </div>
+    </div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Global State ---
+        let quizQuestions = []; // This will hold questions generated by the AI
+
+        // --- Page Navigation ---
+        const pages = document.querySelectorAll('.page');
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            showPage('dashboard-page');
+        });
+
+        function showPage(pageId) {
+            pages.forEach(page => page.classList.toggle('active', page.id === pageId));
+        }
+
+        // --- UI Elements ---
+        const pdfUpload = document.getElementById('pdf-upload');
+        const fileNameEl = document.getElementById('file-name');
+        const uploadStep = document.getElementById('upload-step');
+        const analyzingStep = document.getElementById('analyzing-step');
+        const analyzingTitle = document.getElementById('analyzing-title');
+        const analyzingSubtitle = document.getElementById('analyzing-subtitle');
+        const errorMessage = document.getElementById('error-message');
+        const levelCheckStep = document.getElementById('level-check-step');
+        const quizOptionsStep = document.getElementById('quiz-options-step');
+        const levelQuestionsContainer = document.getElementById('level-questions-container');
+        const submitLevelAnswersBtn = document.getElementById('submit-level-answers');
+        const understandingBar = document.getElementById('understanding-bar');
+        const understandingText = document.getElementById('understanding-text');
+        const latestScoreEl = document.getElementById('latest-score');
+        const aiTipsList = document.getElementById('ai-tips-list');
+        const quizModal = document.getElementById('quiz-modal');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizContent = document.getElementById('quiz-content');
+        const journeyBackBtn = document.getElementById('journey-back-btn');
+        const dashboardBackBtn = document.getElementById('dashboard-back-btn');
+
+        // --- Event Listeners ---
+        const closeQuiz = () => quizModal.style.display = 'none';
+        document.getElementById('close-quiz-btn').addEventListener('click', closeQuiz);
+        document.getElementById('quiz-back-btn').addEventListener('click', closeQuiz);
+        
+        document.getElementById('play-crystals-btn').addEventListener('click', () => startGame('crystals'));
+        document.getElementById('play-scramble-btn').addEventListener('click', () => startGame('scramble'));
+        document.getElementById('play-pulsar-btn').addEventListener('click', () => startGame('pulsar'));
+        document.getElementById('learn-quiz-btn').addEventListener('click', () => startGame('formal'));
+        
+        submitLevelAnswersBtn.addEventListener('click', () => {
+            levelCheckStep.classList.add('hidden');
+            quizOptionsStep.classList.remove('hidden');
+            updateAITips("initial");
+        });
+        
+        pdfUpload.addEventListener('change', handlePdfUpload);
+        dashboardBackBtn.addEventListener('click', () => showPage('login-page'));
+        journeyBackBtn.addEventListener('click', resetJourney);
+
+        // --- Journey Reset ---
+        function resetJourney() {
+            pdfUpload.value = ''; // Reset file input
+            fileNameEl.textContent = '';
+            
+            analyzingStep.classList.add('hidden');
+            levelCheckStep.classList.add('hidden');
+            quizOptionsStep.classList.add('hidden');
+            
+            uploadStep.classList.remove('hidden');
+            journeyBackBtn.classList.add('hidden');
+        }
+
+        // --- Notification System ---
+        function showNotification(message, type = 'error') {
+            const notificationArea = document.getElementById('notification-area');
+            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            const notification = document.createElement('div');
+            notification.className = `notification ${bgColor} text-white font-bold py-2 px-4 rounded-lg shadow-lg`;
+            notification.textContent = message;
+            notificationArea.appendChild(notification);
+            setTimeout(() => {
+                notification.remove();
+            }, 4000); // Remove after animation + display time
+        }
+
+        // --- PDF Processing and AI Question Generation ---
+        async function handlePdfUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            fileNameEl.textContent = file.name;
+            uploadStep.classList.add('hidden');
+            analyzingTitle.textContent = "Reading Your Document...";
+            analyzingSubtitle.textContent = "Extracting text from the PDF pages.";
+            errorMessage.classList.add('hidden');
+            analyzingStep.classList.remove('hidden');
+            journeyBackBtn.classList.remove('hidden'); // Show back button
+
+            try {
+                const text = await extractTextFromPdf(file);
+                analyzingTitle.textContent = "Generating Quiz...";
+                analyzingSubtitle.textContent = "AI is creating questions from your document.";
+                
+                const generatedQuestions = await generateQuestionsFromText(text);
+                if (generatedQuestions && generatedQuestions.length > 0) {
+                    quizQuestions = generatedQuestions;
+                    analyzingStep.classList.add('hidden');
+                    loadLevelCheckQuestions();
+                    levelCheckStep.classList.remove('hidden');
+                } else {
+                    throw new Error("AI could not generate questions. The document might be empty or too short.");
+                }
+
+            } catch (error) {
+                console.error("Error processing PDF or generating questions:", error);
+                analyzingTitle.textContent = "An Error Occurred";
+                analyzingSubtitle.textContent = "Could not generate a quiz from this PDF.";
+                errorMessage.textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            }
+        }
+
+        async function extractTextFromPdf(file) {
+            const pdfjsLib = window['pdfjs-dist/build/pdf'];
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
+            
+            const reader = new FileReader();
+            return new Promise((resolve, reject) => {
+                reader.onload = async (event) => {
+                    try {
+                        const pdf = await pdfjsLib.getDocument(event.target.result).promise;
+                        let fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            fullText += textContent.items.map(item => item.str).join(' ');
+                        }
+                        resolve(fullText);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function generateQuestionsFromText(text) {
+            const apiKey = "AIzaSyCbkkJq5xxUrRVYTcTclSenhtB21AJoMFE"; // API key is handled by the environment.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const systemPrompt = `You are an AI assistant that creates educational quizzes from text. Your task is to generate a diverse set of 10 quiz questions based on the provided content. The questions should be of three types: 'multiple_choice', 'scramble', and 'true_false'. Ensure the questions are directly relevant to the text and the answers are correct according to the text. For 'scramble' questions, the 'answer' should be a single important keyword, and the 'question' should be its definition or a related clue. Respond ONLY with a valid JSON array matching the provided schema. Do not include any other text or explanations.`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: `Generate quiz questions from this text: ${text.substring(0, 8000)}` }] }], // Truncate for safety
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "type": { "type": "STRING" },
+                                "question": { "type": "STRING" },
+                                "options": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                "answer": { "type": "STRING" }
+                            },
+                            required: ["type", "question", "answer"]
+                        }
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorBody}`);
+                }
+                
+                const result = await response.json();
+                const jsonText = result.candidates[0].content.parts[0].text;
+                return JSON.parse(jsonText);
+            } catch (error) {
+                 console.error("API call failed:", error);
+                 throw new Error("Failed to communicate with the AI. Please check the console for details.");
+            }
+        }
+
+        // --- Game and Quiz Logic ---
+        function startGame(mode) {
+            let gameQuestions;
+            switch (mode) {
+                case 'scramble':
+                    gameQuestions = quizQuestions.filter(q => q.type === 'scramble');
+                    if (gameQuestions.length > 0) playWordScramble(gameQuestions);
+                    else { showNotification("AI did not generate any scramble questions."); return; }
+                    break;
+                case 'pulsar':
+                    gameQuestions = quizQuestions.filter(q => q.type === 'true_false');
+                    if (gameQuestions.length > 0) playTrueFalsePulsar(gameQuestions);
+                    else { showNotification("AI did not generate any true/false questions."); return; }
+                    break;
+                case 'crystals':
+                    gameQuestions = quizQuestions.filter(q => q.type === 'multiple_choice');
+                    if (gameQuestions.length > 0) playCosmicCrystals(gameQuestions);
+                    else { showNotification("AI did not generate any multiple choice questions."); return; }
+                    break;
+                case 'formal':
+                    gameQuestions = quizQuestions.filter(q => q.type === 'multiple_choice');
+                     if (gameQuestions.length > 0) playFormalQuiz(gameQuestions);
+                    else { showNotification("AI did not generate any multiple choice questions."); return; }
+                    break;
+            }
+            quizModal.style.display = 'flex';
+        }
+
+        function createGameSession(questions, showQuestionFn) {
+            let currentQuestionIndex = 0;
+            let score = 0;
+            
+            function nextQuestion() {
+                if (currentQuestionIndex >= questions.length) {
+                    showFinalScore(score, questions.length);
+                } else {
+                    showQuestionFn(questions[currentQuestionIndex], handleAnswer);
+                }
+            }
+            
+            function handleAnswer(isCorrect) {
+                if (isCorrect) score++;
+                currentQuestionIndex++;
+                setTimeout(nextQuestion, 2000);
+            }
+            
+            nextQuestion();
+        }
+        
+        // --- MINIGAME 1: Cosmic Crystals ---
+        function playCosmicCrystals(questions) {
+            quizContainer.className = 'glassmorphism rounded-2xl p-8 w-full max-w-3xl relative transition-all duration-300 border-2 border-pink-500';
+            createGameSession(questions, (q, onAnswer) => {
+                const positions = [{ t: '15%', l: '10%' }, { t: '15%', l: '60%' }, { t: '55%', l: '10%' }, { t: '55%', l: '60%' }].sort(() => 0.5 - Math.random());
+                quizContent.innerHTML = `<div class="text-center mb-6"><p class="font-orbitron gradient-text">Cosmic Crystals</p><h2 class="text-2xl font-bold mt-2">${q.question}</h2></div><div id="game-area" class="relative w-full h-72 md:h-80 mt-4">${(q.options || []).map((opt, i) => `<div class="crystal" style="position:absolute; top:${positions[i].t}; left:${positions[i].l}; width: 10rem; height: 10rem; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; padding: 0.5rem;" data-option="${opt}"><svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full text-pink-500/30 group-hover:text-pink-500/50 transition-colors duration-300"><path d="M50 0 L100 25 L100 75 L50 100 L0 75 L0 25 Z" fill="currentColor"/><path d="M50 0 L100 25 L50 50 Z" opacity="0.3" fill="#fff"/><path d="M100 25 L100 75 L50 50 Z" opacity="0.3" fill="#fff"/><path d="M100 75 L50 100 L50 50 Z" opacity="0.3" fill="#fff"/><path d="M50 100 L0 75 L50 50 Z" opacity="0.3" fill="#fff"/><path d="M0 75 L0 25 L50 50 Z" opacity="0.3" fill="#fff"/><path d="M0 25 L50 0 L50 50 Z" opacity="0.3" fill="#fff"/></svg><span class="relative text-white font-semibold">${opt}</span></div>`).join('')}</div><div id="feedback" class="mt-4 text-center h-6 font-bold"></div>`;
+                document.querySelectorAll('.crystal').forEach(c => c.addEventListener('click', e => {
+                    const selected = e.currentTarget.dataset.option;
+                    const correct = selected === q.answer;
+                    document.getElementById('feedback').innerHTML = correct ? `<span class="text-green-400">Correct!</span>` : `<span class="text-red-400">Not quite...</span>`;
+                    e.currentTarget.classList.add(correct ? 'correct' : 'incorrect');
+                    if (!correct) document.querySelector(`.crystal[data-option="${q.answer}"]`).classList.add('reveal');
+                    document.querySelectorAll('.crystal').forEach(el => el.style.pointerEvents = 'none');
+                    onAnswer(correct);
+                }, { once: true }));
+            });
+        }
+        
+        // --- MINIGAME 2: Word Scramble ---
+        function playWordScramble(questions) {
+            quizContainer.className = 'glassmorphism rounded-2xl p-8 w-full max-w-lg relative transition-all duration-300 border-2 border-yellow-500';
+            createGameSession(questions, (q, onAnswer) => {
+                let currentAnswer = '';
+                const shuffled = q.answer.split('').sort(() => 0.5 - Math.random());
+                quizContent.innerHTML = `<div class="text-center mb-6"><p class="font-orbitron gradient-text">Word Scramble</p><h2 class="text-2xl font-bold mt-2">${q.question}</h2></div><div id="scramble-answer-box" class="text-center font-orbitron text-2xl font-bold tracking-widest my-6"></div><div id="letter-bank" class="flex flex-wrap gap-3 justify-center"></div><div id="feedback" class="mt-6 text-center h-6 font-bold"></div>`;
+                const answerBox = document.getElementById('scramble-answer-box');
+                answerBox.textContent = '_'.repeat(q.answer.length);
+                const letterBank = document.getElementById('letter-bank');
+                shuffled.forEach((letter, i) => letterBank.innerHTML += `<button class="scramble-letter font-bold text-xl bg-yellow-500/20 hover:bg-yellow-500/40 w-12 h-12 rounded-lg" data-index="${i}">${letter}</button>`);
+                document.querySelectorAll('.scramble-letter').forEach(btn => btn.addEventListener('click', e => {
+                    e.currentTarget.classList.add('used');
+                    e.currentTarget.disabled = true;
+                    currentAnswer += e.currentTarget.textContent;
+                    answerBox.textContent = currentAnswer + '_'.repeat(q.answer.length - currentAnswer.length);
+                    if (currentAnswer.length === q.answer.length) {
+                        const correct = currentAnswer.toUpperCase() === q.answer.toUpperCase();
+                        document.getElementById('feedback').innerHTML = correct ? `<span class="text-green-400">Correct!</span>` : `<span class="text-red-400">Try Again...</span>`;
+                        answerBox.classList.add(correct ? 'text-green-400' : 'text-red-400');
+                        onAnswer(correct);
+                    }
+                }));
+            });
+        }
+        
+        // --- MINIGAME 3: True/False Pulsar ---
+        function playTrueFalsePulsar(questions) {
+             quizContainer.className = 'glassmorphism rounded-2xl p-8 w-full max-w-lg relative transition-all duration-300 border-2 border-cyan-500';
+             createGameSession(questions, (q, onAnswer) => {
+                 quizContent.innerHTML = `<div class="text-center"><p class="font-orbitron gradient-text">True/False Pulsar</p><h2 class="text-2xl font-bold my-8 min-h-[6rem]">${q.question}</h2><div class="grid grid-cols-2 gap-6 mt-4"><button class="pulsar-btn text-2xl font-bold bg-green-500/30 hover:bg-green-500/50 p-8 rounded-lg" data-answer="True">TRUE</button><button class="pulsar-btn text-2xl font-bold bg-red-500/30 hover:bg-red-500/50 p-8 rounded-lg" data-answer="False">FALSE</button></div><div id="feedback" class="mt-6 text-center h-6 font-bold"></div></div>`;
+                 document.querySelectorAll('.pulsar-btn').forEach(btn => btn.addEventListener('click', e => {
+                     const selected = e.currentTarget.dataset.answer;
+                     const correct = selected.toLowerCase() === q.answer.toLowerCase();
+                     document.getElementById('feedback').innerHTML = correct ? `<span class="text-green-400">Correct!</span>` : `<span class="text-red-400">Incorrect!</span>`;
+                     e.currentTarget.style.boxShadow = `0 0 25px ${correct ? '#10b981' : '#f43f5e'}`;
+                     document.querySelectorAll('.pulsar-btn').forEach(b => b.disabled = true);
+                     onAnswer(correct);
+                 }));
+             });
+        }
+
+        // --- FORMAL QUIZ ---
+        function playFormalQuiz(questions) {
+             quizContainer.className = 'glassmorphism rounded-2xl p-8 w-full max-w-2xl relative transition-all duration-300 border-2 border-indigo-500';
+             createGameSession(questions, (q, onAnswer) => {
+                 quizContent.innerHTML = `<div class="text-center mb-6"><p class="text-sm text-gray-400">Question ${questions.indexOf(q) + 1} of ${questions.length}</p><h2 class="text-2xl font-bold mt-2">${q.question}</h2></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4">${(q.options || []).map(opt => `<button class="quiz-answer-btn p-4 rounded-lg text-left transition-all duration-300 bg-indigo-500/20 hover:bg-indigo-500/40" data-option="${opt}">${opt}</button>`).join('')}</div><div id="feedback" class="mt-6 text-center h-6 font-bold"></div>`;
+                 document.querySelectorAll('.quiz-answer-btn').forEach(btn => btn.addEventListener('click', e => {
+                     const selected = e.currentTarget.dataset.option;
+                     const correct = selected === q.answer;
+                     const feedbackEl = document.getElementById('feedback');
+                     if (correct) {
+                         feedbackEl.innerHTML = `<span class="text-green-400">Correct!</span>`;
+                         e.currentTarget.classList.add('bg-green-500/50', 'ring-2', 'ring-green-400');
+                     } else {
+                         feedbackEl.innerHTML = `<span class="text-red-400">Incorrect. The answer is ${q.answer}.</span>`;
+                         e.currentTarget.classList.add('bg-red-500/50', 'ring-2', 'ring-red-400');
+                     }
+                     document.querySelectorAll('.quiz-answer-btn').forEach(b => b.disabled = true);
+                     onAnswer(correct);
+                 }));
+             });
+        }
+        
+        // --- Helper and UI Update Functions ---
+        const mockLevelQuestions = [ { question: "How familiar are you with this topic?", options: ["I'm a complete beginner", "I know some basics", "I'm fairly confident", "I'm an expert"] }, { question: "What is your learning goal?", options: ["Just curious", "To pass a test", "For a project", "To master it"] }];
+        function showFinalScore(score, total) { const percentage = Math.round((score / total) * 100); quizContent.innerHTML = `<div class="text-center"><h2 class="text-3xl font-bold mb-4 gradient-text">Round Complete!</h2><p class="text-lg text-gray-300">Your Score:</p><p class="text-7xl font-orbitron font-bold my-4">${percentage}%</p><p class="text-gray-400">You got ${score} out of ${total} correct.</p><button id="finish-quiz-btn" class="mt-8 btn-stylish bg-indigo-600 text-white font-bold py-3 px-8 rounded-full">Return to Dashboard</button></div>`; updateDashboardStats(percentage); document.getElementById('finish-quiz-btn').addEventListener('click', () => quizModal.style.display = 'none'); }
+        function loadLevelCheckQuestions() { levelQuestionsContainer.innerHTML = mockLevelQuestions.map((q, i) => `<div class="glassmorphism rounded-lg p-4"><p class="font-semibold mb-3">${q.question}</p><div class="space-y-2">${q.options.map(o => `<label class="flex items-center space-x-3 cursor-pointer"><input type="radio" name="level-q-${i}" value="${o}" class="form-radio h-4 w-4 text-indigo-600 bg-gray-800 border-gray-600"><span>${o}</span></label>`).join('')}</div></div>`).join(''); }
+        function updateDashboardStats(percentage) { latestScoreEl.textContent = `${percentage}%`; let levelText = 'Beginner'; if (percentage > 90) levelText = 'Expert'; else if (percentage > 75) levelText = 'Advanced'; else if (percentage > 50) levelText = 'Intermediate'; understandingBar.style.width = `${percentage}%`; understandingText.textContent = levelText; updateAITips(levelText); }
+        function updateAITips(level) { const tips = { initial: ["Choose a quiz mode to begin.", "The 'Game' mode is great for a fun challenge."], Beginner: ["Review the document's introduction.", "Try the quiz again to solidify the basics."], Intermediate: ["Good job! Identify sections you were unsure about.", "Explain the core concepts to a friend."], Advanced: ["Excellent work! Dive into the more complex sections.", "Find a related, advanced document to continue learning."], Expert: ["Masterful! Try to create your own summary of the document.", "Explore related topics to broaden your expertise."] }; aiTipsList.innerHTML = (tips[level] || []).map(tip => `<li class="flex items-start"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400 mr-2 mt-1 flex-shrink-0"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg><span>${tip}</span></li>`).join(''); }
+
+    });
+</script>
+
+</body>
+</html>
