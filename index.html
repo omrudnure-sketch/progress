@@ -365,8 +365,8 @@
 
             try {
                 const text = await extractTextFromPdf(file);
-                analyzingTitle.textContent = "Generating Quiz...";
-                analyzingSubtitle.textContent = "AI is creating questions from your document.";
+                analyzingTitle.textContent = "Diving Into Gamified Environment";
+                analyzingSubtitle.textContent = "AI is analysing your document.";
                 
                 const generatedQuestions = await generateQuestionsFromText(text);
                 if (generatedQuestions && generatedQuestions.length > 0) {
@@ -603,4 +603,5 @@
 
 </body>
 </html>
+
 
